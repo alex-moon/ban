@@ -1,0 +1,95 @@
+#!/bin/bash
+
+target_cmd=$1
+reasons=$2
+expires=$3
+
+if [ -z "$target_cmd" ]; then
+    echo "Usage: ban <command> [reasons] [expires]"
+    echo "Example: ban youtube-dl"
+    echo "Example: ban steam 'Time wasting' '2023-12-31'"
+    exit 9
+fi
+
+if [ -z "$expires" ]; then
+    expires=$(date -d "+40 days" "+%Y-%m-%d")
+fi
+
+escape_zenity() {
+    echo "$1" | sed \
+        -e 's/&/\&amp;/g' \
+        -e 's/</\&lt;/g' \
+        -e 's/>/\&gt;/g' \
+        -e 's/"/\&quot;/g' \
+        -e "s/'/\&apos;/g"
+}
+
+if [ -z "$reasons" ]; then
+    escaped_reasons="<i>No reasons given</i>"
+else
+    escaped_reasons=$(escape_zenity "$reasons")
+fi
+
+original_cmd=$(command -v "$target_cmd")
+if [[ "$original_cmd" == "$HOME/.bans/"* ]]; then
+    echo "$target_cmd is already banned! Remove ~/.bans/$target_cmd to unban."
+    exit 9
+fi
+
+human_expires=$(date -d "$expires" "+%A %d %B %Y")
+
+ban_path="$HOME/.bans"
+mkdir -p $ban_path
+
+# Create the ban script
+ban_script="$ban_path/$target_cmd"
+cat > "$ban_script" <<EOF
+#!/bin/bash
+
+# Check if ban has expired
+if [ \$(date +%s) -ge \$(date -d "$expires" +%s) ]; then
+    rm -f "$ban_script"
+    exec "$original_cmd" "\$@"
+fi
+
+# Show ban notice
+zenity --info --title="Self-imposed ban" --text="\
+<b>$target_cmd</b> is the subject of a self-imposed ban.\r\r\
+<b>Reasons:</b>\r\
+$escaped_reasons\r\r\
+<b>Ban lifts:</b> $human_expires"
+
+exit 1
+EOF
+
+chmod +x "$ban_script"
+
+# Handle Wayland env
+env_path="$HOME/.config/environment.d"
+mkdir -p $env_path
+
+envvars="$env_path/envvars.conf"
+if ! [ -f $envvars ]; then
+    echo "Creating ban PATH configuration..."
+    echo "PATH=$HOME/.bans:\$PATH" > $envvars
+elif ! grep -q "/\.bans" $envvars; then
+    echo "" >> $envvars
+    echo "PATH=$HOME/.bans:\$PATH" >> $envvars
+fi
+
+# Handle terminal
+bashrc="$HOME/.bashrc"
+if ! grep -q "/\.bans" $bashrc; then
+    cat >> $bashrc <<EOF
+
+# Bans
+if ! [[ "\$PATH" =~ "\$HOME/.bans:" ]]; then
+    PATH="\$HOME/.bans:\$PATH"
+fi
+
+EOF
+fi
+
+echo "Successfully banned $target_cmd until $human_expires"
+echo "Changes will take effect system-wide after restart or login"
+
