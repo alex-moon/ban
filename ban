@@ -57,14 +57,32 @@ if [ \$(date +%s) -ge \$(date -d "$expires" +%s) ]; then
     exec "$original_cmd" "\$@"
 fi
 
+# Log temptation attempt
+log_file="$ban_script.log"
+if [ -f "\$log_file" ]; then
+    source "\$log_file"
+else
+    ATTEMPTS=0
+fi
+
+human_last_attempt=\$(date -d "\$LAST_ATTEMPT" "+%A %d %B %Y %H:%M")
+
+ATTEMPTS=\$((ATTEMPTS + 1))
+LAST_ATTEMPT="\$(date '+%Y-%m-%d %H:%M')"
+
+cat > "\$log_file" <<LOG
+ATTEMPTS=\$ATTEMPTS
+LAST_ATTEMPT="\$LAST_ATTEMPT"
+LOG
+
 # Show ban notice
 zenity --info --title="Self-imposed ban" --text="\
 <b>$target_cmd</b> is the subject of a self-imposed ban.\r\r\
 <b>Reasons:</b>\r\
 $escaped_reasons\r\r\
-<b>Ban lifts:</b> $human_expires"
-
-exit 1
+<b>Ban lifts:</b> $human_expires\r\r\
+You have attempted to run this command <b>\$ATTEMPTS times</b>.\r\r\
+Your most recent attempt was on <b>\$human_last_attempt</b>."
 EOF
 
 chmod +x "$ban_script"
