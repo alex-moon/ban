@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -z "$(command -v zenity)" ]; then
+    echo "Zenity is required for this script. Please install it."
+    exit 1
+fi
+
 target_cmd=$1
 reasons=$2
 expires=$3
