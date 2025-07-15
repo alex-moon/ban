@@ -3,7 +3,8 @@
 A lightweight Bash script to help you block yourself from using time-wasting or
 distracting commands until a specified date with optional reasons and friendly reminders.
 
-Perfect for developers and terminal junkies trying to reclaim their focus.
+Perfect for wofi/bemenu/fuzzel/etc. users trying to wrestle some of their headspace back
+from distractions.
 
 ## Install
 
