@@ -114,5 +114,4 @@ EOF
 fi
 
 echo "Successfully banned $target_cmd until $human_expires"
-echo "Changes will take effect system-wide after restart or login"
 
